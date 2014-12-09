@@ -11,9 +11,6 @@
     = stylesheet_link_tag "overlay", "globe"
 
   %body
-    %header
-      = yield_content :header
-    %main
-      = yield
+    = yield
 
     = javascript_include_tag "globe"

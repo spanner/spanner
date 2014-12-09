@@ -6,29 +6,26 @@
 rad = Math.PI / 180
 deg = 180
 
-d3.geo.reverseOrthographic = () ->
-  d3.geo.projection (λ, φ) ->
-    λ += Math.PI
-    [Math.cos(φ) * Math.sin(λ), Math.sin(φ)]
-
-d3.geo.reverseNellHammer = () ->
-  ratio = 1.6
-  d3.geo.projection (λ, φ)  ->
-    λ *= -1
-    [λ * (1 + Math.cos(φ)) / ratio, 2 * (φ - Math.tan(φ / 2))]
-
 class Globe
-  constructor: () ->
-    @_w = window.innerWidth
-    @_h = window.innerHeight
-    @_s = 0.0025 #lats per second
-    @_l = 0 # start at meridian
+  constructor: (elid) ->
+    element = document.getElementById(elid.replace('#', ''))
+    @_w = element.offsetWidth
+    if @_w > 800
+      @_a = 16 / 9
+    else if @_w > 500
+      @_a = 16 / 12
+    else
+      @_a = 1
+    @_h = @_w / @_a
+    @_h = window.innerHeight if @_h > window.innerHeight
+    @_s = 0.0025  #lats per second
+    @_l = 0       # start at meridian
 
-    @_globe_scale = 2 / 3
+    @_globe_scale = 0.8
     @_diameter = (Math.min @_w, @_h) * @_globe_scale
     @_radius = @_diameter / 2
 
-    @_background_projection = d3.geo.reverseNellHammer()
+    @_background_projection = @reverseNellHammer(@_a)
       .scale(@_radius * .9)
       .translate([@_w / 2, @_h / 2])
       .precision(.1)
@@ -39,7 +36,7 @@ class Globe
       .scale(@_radius)
       .rotate([0, 0, 0])
       
-    @_reverse_projection = d3.geo.reverseOrthographic()
+    @_reverse_projection = @reverseOrthographic()
       .clipAngle(90)
       .translate([@_w / 2, @_h / 2])
       .scale(@_radius)
@@ -54,7 +51,7 @@ class Globe
     @_reverse_path = d3.geo.path()
       .projection(@_reverse_projection)
 
-    @_svg = d3.select("#globe").append("svg")
+    @_svg = d3.select(elid).append("svg")
       .attr("width", @_w)
       .attr("height", @_h)
 
@@ -134,8 +131,16 @@ class Globe
     requestAnimationFrame @spin
     now = new Date().getTime()
     delta = now - @_t
-    @_l += delta * @_s
+    if delta
+      rate = 1000.0 / delta
+      @_rates ?= []
+      @_rates.push rate
+      @_rates.shift() if @_rates.length > 10
+      average = Math.round(@_rates.reduce((v, c) -> v + c) / 10.0)
+      @_rate_report ?= document.getElementById('rate')
+      @_rate_report.innerText = "#{average}fps"
 
+    @_l += delta * @_s
     @_projection.rotate([@_l, 0, 0])
     @_background_projection.rotate([@_l-180, 0, 0])
     @_reverse_projection.rotate([@_l-180, 0, 0])
@@ -145,4 +150,16 @@ class Globe
     @_locations?.attr("d", @_path)
     @_t = now
 
-window.globe = new Globe()
+  reverseNellHammer: (aspect=2) ->
+    d3.geo.projection (λ, φ)  ->
+      λ *= -1
+      [λ * (1 + Math.cos(φ)) / aspect, 2 * (φ - Math.tan(φ / 2))]
+  
+  reverseOrthographic: () ->
+    d3.geo.projection (λ, φ) ->
+      λ += Math.PI
+      [Math.cos(φ) * Math.sin(λ), Math.sin(φ)]
+
+
+
+window.globe = new Globe('#globe')
