@@ -1,0 +1,19 @@
+!!!
+%html
+  %head
+    %meta{:charset => "utf-8"}
+    %meta{:name => "viewport", :content => "width=device-width, initial-scale=1"}
+    %title
+      spanner
+
+    = yield_content :head
+
+    = stylesheet_link_tag "overlay", "globe"
+
+  %body
+    %header
+      = yield_content :header
+    %main
+      = yield
+
+    = javascript_include_tag "globe"
